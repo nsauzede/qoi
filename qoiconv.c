@@ -52,6 +52,7 @@ int main(int argc, char **argv) {
 		printf("Examples:\n");
 		printf("  qoiconv image.png image.qoi\n");
 		printf("  qoiconv image.qoi image.png\n");
+		printf("  qoiconv image_in.png image_out.png\n");
 		exit(1);
 	}
 

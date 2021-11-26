@@ -295,6 +295,7 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
 
   int px_len = w * h * channels;
   int px_end = px_len - channels;
+  int npix = 0;
   for (int px_pos = 0; px_pos < px_len; px_pos += channels) {
     _p = p;
     if (channels == 4) {
@@ -312,15 +313,20 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
     if (run > 0 && (run == 0x2020 || px.v != px_prev.v || px_pos == px_end)) {
       if (run < 33) {
         run -= 1;
+        // printf("RUN8 p=%d\n", p);
+        printf("RUN8 p=%d %d\n", p, run);
         bytes[p++] = QOI_RUN_8 | run;
         // printf("RUN8 %d\n", run);
-        printf("RUN8\n");
+        // printf("RUN8\n");
+        npix += run;
       } else {
         run -= 33;
+        printf("RUN16 p=%d\n", p);
         bytes[p++] = QOI_RUN_16 | run >> 8;
         bytes[p++] = run;
         // printf("RUN16 %d\n", run);
-        printf("RUN16\n");
+        // printf("RUN16\n");
+        npix += run;
       }
       run = 0;
     }
@@ -329,9 +335,10 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
       int index_pos = QOI_COLOR_HASH(px) % 64;
 
       if (index[index_pos].v == px.v) {
+        printf("INDEX p=%d\n", p);
         bytes[p++] = QOI_INDEX | index_pos;
         // printf("INDEX %d\n", index_pos);
-        printf("INDEX\n");
+        // printf("INDEX\n");
       } else {
         index[index_pos] = px;
 
@@ -344,24 +351,46 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
             va > -16 && va < 17) {
           if (va == 0 && vr > -2 && vr < 3 && vg > -2 && vg < 3 && vb > -2 &&
               vb < 3) {
+            printf("DIFF8 p=%d\n", p);
             bytes[p++] =
               QOI_DIFF_8 | ((vr + 1) << 4) | (vg + 1) << 2 | (vb + 1);
             // printf("DIFF8 %d %d %d\n", vr, vg, vb);
-            printf("DIFF8\n");
+            // printf("DIFF8\n");
           } else if (va == 0 && vr > -16 && vr < 17 && vg > -8 && vg < 9 &&
                      vb > -8 && vb < 9) {
+            printf("DIFF16 p=%d\n", p);
             bytes[p++] = QOI_DIFF_16 | (vr + 15);
             bytes[p++] = ((vg + 7) << 4) | (vb + 7);
             // printf("DIFF16 %d %d %d\n", vr, vg, vb);
-            printf("DIFF16\n");
+            // printf("DIFF16\n");
           } else {
+            printf("DIFF24 p=%d\n", p);
             bytes[p++] = QOI_DIFF_24 | ((vr + 15) >> 1);
             bytes[p++] = ((vr + 15) << 7) | ((vg + 15) << 2) | ((vb + 15) >> 3);
             bytes[p++] = ((vb + 15) << 5) | (va + 15);
             // printf("DIFF24 %d %d %d %d\n", vr, vg, vb, va);
-            printf("DIFF24\n");
+            // printf("DIFF24\n");
           }
         } else {
+          //   printf("COLOR p=%d\n", p);
+          printf("COLOR p=%d", p);
+          if (vr) {
+            printf(" r=%d", px.rgba.r);
+          }
+          if (vg) {
+            printf(" g=%d", px.rgba.g);
+          }
+          if (vb) {
+            printf(" b=%d", px.rgba.b);
+          }
+          if (va) {
+            printf(" a=%d", px.rgba.a);
+          }
+          printf("\n");
+          //   printf("COLOR p=%d %02x\n",
+          //          p,
+          //          QOI_COLOR | (vr ? 8 : 0) | (vg ? 4 : 0) | (vb ? 2 : 0) |
+          //            (va ? 1 : 0));
           bytes[p++] = QOI_COLOR | (vr ? 8 : 0) | (vg ? 4 : 0) | (vb ? 2 : 0) |
                        (va ? 1 : 0);
           if (vr) {
@@ -376,9 +405,8 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
           if (va) {
             bytes[p++] = px.rgba.a;
           }
-          //   printf("COLOR %d\n", p - _p);
-          printf("COLOR\n");
-          _p = p;
+          //   printf("COLOR %d\n", p - _p);_p = p;
+          //   printf("COLOR\n");
         }
       }
     }
@@ -390,6 +418,8 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
   }
 
   ((qoi_header_t*)bytes)->size = p - sizeof(qoi_header_t);
+  //   printf("QOIF: %dx%d (%d)\n", w, h, (int)(p - sizeof(qoi_header_t)));
+  //   printf("npix=%d\n", npix);
   *out_len = p;
   return bytes;
 }

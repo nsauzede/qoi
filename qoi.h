@@ -341,6 +341,7 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
         // printf("INDEX\n");
       } else {
         index[index_pos] = px;
+        printf("lut index=%d\n", index_pos);
 
         int vr = px.rgba.r - px_prev.rgba.r;
         int vg = px.rgba.g - px_prev.rgba.g;

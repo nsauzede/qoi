@@ -321,7 +321,7 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
         npix += run;
       } else {
         run -= 33;
-        printf("RUN16 p=%d\n", p);
+        printf("RUN16 p=%d %d\n", p, run);
         bytes[p++] = QOI_RUN_16 | run >> 8;
         bytes[p++] = run;
         // printf("RUN16 %d\n", run);
@@ -335,7 +335,7 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
       int index_pos = QOI_COLOR_HASH(px) % 64;
 
       if (index[index_pos].v == px.v) {
-        printf("INDEX p=%d\n", p);
+        printf("INDEX p=%d %d\n", p, index_pos);
         bytes[p++] = QOI_INDEX | index_pos;
         // printf("INDEX %d\n", index_pos);
         // printf("INDEX\n");
@@ -351,20 +351,20 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
             va > -16 && va < 17) {
           if (va == 0 && vr > -2 && vr < 3 && vg > -2 && vg < 3 && vb > -2 &&
               vb < 3) {
-            printf("DIFF8 p=%d\n", p);
+            printf("DIFF8 p=%d %d %d %d\n", p, vr, vg, vb);
             bytes[p++] =
               QOI_DIFF_8 | ((vr + 1) << 4) | (vg + 1) << 2 | (vb + 1);
             // printf("DIFF8 %d %d %d\n", vr, vg, vb);
             // printf("DIFF8\n");
           } else if (va == 0 && vr > -16 && vr < 17 && vg > -8 && vg < 9 &&
                      vb > -8 && vb < 9) {
-            printf("DIFF16 p=%d\n", p);
+            printf("DIFF16 p=%d %d %d %d\n", p, vr, vg, vb);
             bytes[p++] = QOI_DIFF_16 | (vr + 15);
             bytes[p++] = ((vg + 7) << 4) | (vb + 7);
             // printf("DIFF16 %d %d %d\n", vr, vg, vb);
             // printf("DIFF16\n");
           } else {
-            printf("DIFF24 p=%d\n", p);
+            printf("DIFF24 p=%d %d %d %d %d\n", p, vr, vg, vb, va);
             bytes[p++] = QOI_DIFF_24 | ((vr + 15) >> 1);
             bytes[p++] = ((vr + 15) << 7) | ((vg + 15) << 2) | ((vb + 15) >> 3);
             bytes[p++] = ((vb + 15) << 5) | (va + 15);
@@ -386,6 +386,7 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
           if (va) {
             printf(" a=%d", px.rgba.a);
           }
+          //   printf(" %d", index_pos);
           printf("\n");
           //   printf("COLOR p=%d %02x\n",
           //          p,

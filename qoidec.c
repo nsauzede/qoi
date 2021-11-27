@@ -25,6 +25,10 @@ main(int argc, char* argv[])
   long size = ftell(in);
   typedef uint8_t u8;
   typedef uint16_t u16;
+  typedef struct
+  {
+    int r, g, b, a;
+  } rgba;
   typedef union
   {
     struct
@@ -66,18 +70,20 @@ main(int argc, char* argv[])
     } diff8;
     struct
     {
-      u8 db : 4;
-      u8 dg : 4;
       u8 dr : 5;
       u8 tag : 3;
+      u8 db : 4;
+      u8 dg : 4;
     } diff16;
     struct
     {
-      u16 da : 5;
-      u16 db : 5;
-      u16 dg : 5;
-      u16 dr : 5;
-      u16 tag : 4;
+      u8 dr41 : 4;
+      u8 tag : 4;
+      u8 db43 : 2;
+      u8 dg : 5;
+      u8 dr00 : 1;
+      u8 da : 5;
+      u8 db20 : 3;
     } diff24;
     struct
     {
@@ -86,10 +92,6 @@ main(int argc, char* argv[])
       u8 has_g : 1;
       u8 has_r : 1;
       u8 tag : 4;
-      u8 a;
-      u8 b;
-      u8 g;
-      u8 r;
     } color;
   } chunk_t;
   typedef struct
@@ -120,6 +122,15 @@ main(int argc, char* argv[])
   //   printf("run8=%zd\n", sizeof(ch0.run8));
   //   printf("index=%zd\n", sizeof(ch0.index));
   int npix = 0;
+  FILE* out = fopen(outf, "wt");
+  fprintf(out, "P3\n");
+  fprintf(out, "%d %d\n", qoi->width, qoi->height);
+  fprintf(out, "255\n");
+  int r, g, b = g = r = 0, a = 255;
+  rgba lut[64];
+  for (int i = 0; i < 64; i++) {
+    lut[i] = (rgba){ 128, 128, 128 };
+  }
   for (int i = 0; i < qoi->size;) {
     if (npix >= qoi->width * qoi->height)
       break;
@@ -127,11 +138,15 @@ main(int argc, char* argv[])
     chunk_t* ch = (chunk_t*)&qoi->data[i];
     switch (ch->tag2) {
       case 0x0:
-        printf("INDEX p=%d\n", p);
+        printf("INDEX p=%d %d\n", p, ch->index.idx);
         // printf("INDEX %d\n", i);
         // printf("INDEX\n");
         i += sizeof(ch->index);
         npix++;
+        r = lut[ch->index.idx].r;
+        g = lut[ch->index.idx].g;
+        b = lut[ch->index.idx].b;
+        fprintf(out, "%d %d %d\n", r, g, b);
         break;
       case 0x1:
         // printf("RUN8/16\n");
@@ -143,13 +158,19 @@ main(int argc, char* argv[])
             // printf("RUN8 %d\n", i - _i);
             // printf("RUN8\n");
             npix += ch->run8.run + 1;
+            for (int j = 0; j < ch->run8.run + 1; j++) {
+              fprintf(out, "%d %d %d\n", r, g, b);
+            }
             break;
           case 0x3:
-            printf("RUN16 p=%d\n", p);
+            printf("RUN16 p=%d %d\n", p, ch->run16.run);
             i += sizeof(ch->run16);
             // printf("RUN16 %d\n", i - _i);
             // printf("RUN16\n");
             npix += ch->run16.run + 33;
+            for (int j = 0; j < ch->run16.run + 33; j++) {
+              fprintf(out, "%d %d %d\n", r, g, b);
+            }
             break;
           default:
             printf("unhandled tag3 %d\n", ch->tag3);
@@ -157,49 +178,86 @@ main(int argc, char* argv[])
         }
         break;
       case 0x2:
-        printf("DIFF8 p=%d\n", p);
+        printf("DIFF8 p=%d %d %d %d\n",
+               p,
+               ch->diff8.dr - 1,
+               ch->diff8.dg - 1,
+               ch->diff8.db - 1);
         // printf("DIFF8\n");
         i += sizeof(ch->diff8);
         npix++;
+        r = r + ch->diff8.dr - 1;
+        g = g + ch->diff8.dg - 1;
+        b = b + ch->diff8.db - 1;
+        fprintf(out, "%d %d %d\n", r, g, b);
         break;
       case 0x3:
         // printf("DIFF16/24/COLOR\n");
         switch (ch->tag3) {
           case 0x6:
-            printf("DIFF16 p=%d\n", p);
+            printf("DIFF16 p=%d %d %d %d\n",
+                   p,
+                   ch->diff16.dr - 15,
+                   ch->diff16.dg - 7,
+                   ch->diff16.db - 7);
             // printf("DIFF16\n");
             i += sizeof(ch->diff16);
             npix++;
+            r = r + ch->diff16.dr - 15;
+            g = g + ch->diff16.dg - 15;
+            b = b + ch->diff16.db - 15;
+            fprintf(out, "%d %d %d\n", r, g, b);
             break;
           default:
             switch (ch->tag4) {
-              case 0xe:
-                printf("DIFF24 p=%d\n", p);
+              case 0xe: {
+                int dr = ((ch->diff24.dr41 << 1) + (ch->diff24.dr00)) - 15;
+                int dg = ch->diff24.dg - 15;
+                // printf("r 41=%d 00=%d\n", ch->diff24.dr41, ch->diff24.dr00);
+                int db = ((ch->diff24.db43 << 3) + ch->diff24.db20) - 15;
+                // printf("b 43=%d 20=%d\n", ch->diff24.db43, ch->diff24.db20);
+                printf("DIFF24 p=%d %d %d %d %d\n",
+                       p,
+                       dr,
+                       dg,
+                       db,
+                       ch->diff24.da - 15);
                 // printf("DIFF24\n");
                 // i += sizeof(ch->diff24);
                 i += 3;
                 npix++;
+                r = r + dr;
+                g = g + dg;
+                b = b + db;
+                fprintf(out, "%d %d %d\n", r, g, b);
                 break;
+              }
               default: {
                 // printf("COLOR p=%d\n", p);
                 printf("COLOR p=%d", p);
                 i++;
                 if (ch->color.has_r) {
                   printf(" r=%d", qoi->data[i]);
+                  r = qoi->data[i];
                   i++;
                 }
                 if (ch->color.has_g) {
                   printf(" g=%d", qoi->data[i]);
+                  g = qoi->data[i];
                   i++;
                 }
                 if (ch->color.has_b) {
                   printf(" b=%d", qoi->data[i]);
+                  b = qoi->data[i];
                   i++;
                 }
                 if (ch->color.has_a) {
                   printf(" a=%d", qoi->data[i]);
+                  a = qoi->data[i];
                   i++;
                 }
+                fprintf(out, "%d %d %d\n", r, g, b);
+                // printf(" %d", idx);
                 printf("\n");
                 // printf("COLOR p=%d %02x\n", p, qoi->data[i]);
                 // printf("COLOR %d\n", i - _i);
@@ -215,6 +273,8 @@ main(int argc, char* argv[])
         printf("unhandled tag2 %d\n", ch->tag2);
         exit(1);
     }
+    int idx = (r ^ g ^ b ^ a) % 64;
+    lut[idx] = (rgba){ r, g, b, a };
   }
   //   printf("npix=%d\n", npix);
   return 0;

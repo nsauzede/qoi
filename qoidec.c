@@ -3,6 +3,14 @@
 #include <stdio.h>
 #include <string.h>
 
+// #define DEBUG
+#ifdef DEBUG
+#else
+#define dprintf(...)                                                           \
+  do {                                                                         \
+  } while (0)
+#endif
+
 int
 main(int argc, char* argv[])
 {
@@ -111,23 +119,23 @@ main(int argc, char* argv[])
     printf("Invalid qoif magic\n");
     exit(1);
   }
-  //   printf("QOIF: %dx%d (%d)\n", qoi->width, qoi->height, (int)qoi->size);
-  //   printf("chunk_t=%zd\n", sizeof(chunk_t));
+  //   dprintf("QOIF: %dx%d (%d)\n", qoi->width, qoi->height, (int)qoi->size);
+  //   dprintf("chunk_t=%zd\n", sizeof(chunk_t));
   //   chunk_t ch0;
-  //   printf("color=%zd\n", sizeof(ch0.color));
-  //   printf("diff24=%zd\n", sizeof(ch0.diff24));
-  //   printf("diff16=%zd\n", sizeof(ch0.diff16));
-  //   printf("diff8=%zd\n", sizeof(ch0.diff8));
-  //   printf("run16=%zd\n", sizeof(ch0.run16));
-  //   printf("run8=%zd\n", sizeof(ch0.run8));
-  //   printf("index=%zd\n", sizeof(ch0.index));
+  //   dprintf("color=%zd\n", sizeof(ch0.color));
+  //   dprintf("diff24=%zd\n", sizeof(ch0.diff24));
+  //   dprintf("diff16=%zd\n", sizeof(ch0.diff16));
+  //   dprintf("diff8=%zd\n", sizeof(ch0.diff8));
+  //   dprintf("run16=%zd\n", sizeof(ch0.run16));
+  //   dprintf("run8=%zd\n", sizeof(ch0.run8));
+  //   dprintf("index=%zd\n", sizeof(ch0.index));
   int npix = 0;
   FILE* out = fopen(outf, "wt");
   fprintf(out, "P3\n");
   fprintf(out, "%d %d\n", qoi->width, qoi->height);
   fprintf(out, "255\n");
   int r, g, b = g = r = 0, a = 255;
-  int old_r = -1, old_g = -1, old_b = -1, old_a = -1;
+  //   int old_r = 0, old_g = 0, old_b = 0, old_a = 255;
   rgba lut[64];
   for (int i = 0; i < 64; i++) {
     lut[i] = (rgba){ 128, 128, 128 };
@@ -135,13 +143,24 @@ main(int argc, char* argv[])
   for (int i = 0; i < qoi->size;) {
     if (npix >= qoi->width * qoi->height)
       break;
+#ifdef DEBUG
     int p = 12 + i;
+#endif
     chunk_t* ch = (chunk_t*)&qoi->data[i];
+    // if (old_r != r || old_g != g || old_b != b || old_a != a) {
+    int idx = (r ^ g ^ b ^ a) % 64;
+    lut[idx] = (rgba){ r, g, b, a };
+    // old_r = r;
+    // old_g = g;
+    // old_b = b;
+    // old_a = a;
+    //   dprintf("lut index=%d\n", idx);
+    // }
     switch (ch->tag2) {
       case 0x0:
-        printf("INDEX p=%d %d\n", p, ch->index.idx);
-        // printf("INDEX %d\n", i);
-        // printf("INDEX\n");
+        dprintf("INDEX p=%d %d\n", p, ch->index.idx);
+        // dprintf("INDEX %d\n", i);
+        // dprintf("INDEX\n");
         i += sizeof(ch->index);
         npix++;
         r = lut[ch->index.idx].r;
@@ -150,24 +169,24 @@ main(int argc, char* argv[])
         fprintf(out, "%d %d %d\n", r, g, b);
         break;
       case 0x1:
-        // printf("RUN8/16\n");
+        // dprintf("RUN8/16\n");
         switch (ch->tag3) {
           case 0x2:
-            // printf("RUN8 p=%d\n", p);
-            printf("RUN8 p=%d %d\n", p, ch->run8.run);
+            // dprintf("RUN8 p=%d\n", p);
+            dprintf("RUN8 p=%d %d\n", p, ch->run8.run);
             i += sizeof(ch->run8);
-            // printf("RUN8 %d\n", i - _i);
-            // printf("RUN8\n");
+            // dprintf("RUN8 %d\n", i - _i);
+            // dprintf("RUN8\n");
             npix += ch->run8.run + 1;
             for (int j = 0; j < ch->run8.run + 1; j++) {
               fprintf(out, "%d %d %d\n", r, g, b);
             }
             break;
           case 0x3:
-            printf("RUN16 p=%d %d\n", p, ch->run16.run);
+            dprintf("RUN16 p=%d %d\n", p, ch->run16.run);
             i += sizeof(ch->run16);
-            // printf("RUN16 %d\n", i - _i);
-            // printf("RUN16\n");
+            // dprintf("RUN16 %d\n", i - _i);
+            // dprintf("RUN16\n");
             npix += ch->run16.run + 33;
             for (int j = 0; j < ch->run16.run + 33; j++) {
               fprintf(out, "%d %d %d\n", r, g, b);
@@ -179,63 +198,63 @@ main(int argc, char* argv[])
         }
         break;
       case 0x2:
-        // printf("DIFF8\n");
+        // dprintf("DIFF8\n");
         i += sizeof(ch->diff8);
         npix++;
         r = r + ch->diff8.dr - 1;
         g = g + ch->diff8.dg - 1;
         b = b + ch->diff8.db - 1;
         fprintf(out, "%d %d %d\n", r, g, b);
-        if (old_r != r || old_g != g || old_b != b || old_a != a) {
-          int idx = (r ^ g ^ b ^ a) % 64;
-          lut[idx] = (rgba){ r, g, b, a };
-          old_r = r;
-          old_g = g;
-          old_b = b;
-          old_a = a;
-          printf("lut index=%d\n", idx);
-        }
-        printf("DIFF8 p=%d %d %d %d\n",
-               p,
-               ch->diff8.dr - 1,
-               ch->diff8.dg - 1,
-               ch->diff8.db - 1);
+        // if (old_r != r || old_g != g || old_b != b || old_a != a) {
+        //   int idx = (r ^ g ^ b ^ a) % 64;
+        //   lut[idx] = (rgba){ r, g, b, a };
+        //   old_r = r;
+        //   old_g = g;
+        //   old_b = b;
+        //   old_a = a;
+        //   dprintf("lut index=%d\n", idx);
+        // }
+        dprintf("DIFF8 p=%d %d %d %d\n",
+                p,
+                ch->diff8.dr - 1,
+                ch->diff8.dg - 1,
+                ch->diff8.db - 1);
         break;
       case 0x3:
-        // printf("DIFF16/24/COLOR\n");
+        // dprintf("DIFF16/24/COLOR\n");
         switch (ch->tag3) {
           case 0x6:
-            // printf("DIFF16\n");
+            // dprintf("DIFF16\n");
             i += sizeof(ch->diff16);
             npix++;
             r = r + ch->diff16.dr - 15;
             g = g + ch->diff16.dg - 7;
             b = b + ch->diff16.db - 7;
             fprintf(out, "%d %d %d\n", r, g, b);
-            if (old_r != r || old_g != g || old_b != b || old_a != a) {
-              int idx = (r ^ g ^ b ^ a) % 64;
-              lut[idx] = (rgba){ r, g, b, a };
-              old_r = r;
-              old_g = g;
-              old_b = b;
-              old_a = a;
-              printf("lut index=%d\n", idx);
-            }
-            printf("DIFF16 p=%d %d %d %d\n",
-                   p,
-                   ch->diff16.dr - 15,
-                   ch->diff16.dg - 7,
-                   ch->diff16.db - 7);
+            // if (old_r != r || old_g != g || old_b != b || old_a != a) {
+            //   int idx = (r ^ g ^ b ^ a) % 64;
+            //   lut[idx] = (rgba){ r, g, b, a };
+            //   old_r = r;
+            //   old_g = g;
+            //   old_b = b;
+            //   old_a = a;
+            //   dprintf("lut index=%d\n", idx);
+            // }
+            dprintf("DIFF16 p=%d %d %d %d\n",
+                    p,
+                    ch->diff16.dr - 15,
+                    ch->diff16.dg - 7,
+                    ch->diff16.db - 7);
             break;
           default:
             switch (ch->tag4) {
               case 0xe: {
                 int dr = ((ch->diff24.dr41 << 1) + (ch->diff24.dr00)) - 15;
                 int dg = ch->diff24.dg - 15;
-                // printf("r 41=%d 00=%d\n", ch->diff24.dr41, ch->diff24.dr00);
+                // dprintf("r 41=%d 00=%d\n", ch->diff24.dr41, ch->diff24.dr00);
                 int db = ((ch->diff24.db43 << 3) + ch->diff24.db20) - 15;
-                // printf("b 43=%d 20=%d\n", ch->diff24.db43, ch->diff24.db20);
-                // printf("DIFF24\n");
+                // dprintf("b 43=%d 20=%d\n", ch->diff24.db43, ch->diff24.db20);
+                // dprintf("DIFF24\n");
                 // i += sizeof(ch->diff24);
                 i += 3;
                 npix++;
@@ -243,76 +262,76 @@ main(int argc, char* argv[])
                 g = g + dg;
                 b = b + db;
                 fprintf(out, "%d %d %d\n", r, g, b);
-                if (old_r != r || old_g != g || old_b != b || old_a != a) {
-                  int idx = (r ^ g ^ b ^ a) % 64;
-                  lut[idx] = (rgba){ r, g, b, a };
-                  old_r = r;
-                  old_g = g;
-                  old_b = b;
-                  old_a = a;
-                  printf("lut index=%d\n", idx);
-                }
-                printf("DIFF24 p=%d %d %d %d %d\n",
-                       p,
-                       dr,
-                       dg,
-                       db,
-                       ch->diff24.da - 15);
+                // if (old_r != r || old_g != g || old_b != b || old_a != a) {
+                //   int idx = (r ^ g ^ b ^ a) % 64;
+                //   lut[idx] = (rgba){ r, g, b, a };
+                //   old_r = r;
+                //   old_g = g;
+                //   old_b = b;
+                //   old_a = a;
+                //   dprintf("lut index=%d\n", idx);
+                // }
+                dprintf("DIFF24 p=%d %d %d %d %d\n",
+                        p,
+                        dr,
+                        dg,
+                        db,
+                        ch->diff24.da - 15);
                 break;
               }
               default: {
-                // printf("COLOR p=%d\n", p);
-                // printf("COLOR p=%d", p);
+                // dprintf("COLOR p=%d\n", p);
+                // dprintf("COLOR p=%d", p);
                 i++;
                 if (ch->color.has_r) {
-                  //   printf(" r=%d", qoi->data[i]);
+                  //   dprintf(" r=%d", qoi->data[i]);
                   r = qoi->data[i];
                   i++;
                 }
                 if (ch->color.has_g) {
-                  //   printf(" g=%d", qoi->data[i]);
+                  //   dprintf(" g=%d", qoi->data[i]);
                   g = qoi->data[i];
                   i++;
                 }
                 if (ch->color.has_b) {
-                  //   printf(" b=%d", qoi->data[i]);
+                  //   dprintf(" b=%d", qoi->data[i]);
                   b = qoi->data[i];
                   i++;
                 }
                 if (ch->color.has_a) {
-                  //   printf(" a=%d", qoi->data[i]);
+                  //   dprintf(" a=%d", qoi->data[i]);
                   a = qoi->data[i];
                   i++;
                 }
                 fprintf(out, "%d %d %d\n", r, g, b);
-                // printf(" %d", idx);
-                // printf("\n");
-                // printf("COLOR p=%d %02x\n", p, qoi->data[i]);
-                // printf("COLOR %d\n", i - _i);
-                // printf("COLOR\n");
-                if (old_r != r || old_g != g || old_b != b || old_a != a) {
-                  int idx = (r ^ g ^ b ^ a) % 64;
-                  lut[idx] = (rgba){ r, g, b, a };
-                  old_r = r;
-                  old_g = g;
-                  old_b = b;
-                  old_a = a;
-                  printf("lut index=%d\n", idx);
-                }
-                printf("COLOR p=%d", p);
+                // dprintf(" %d", idx);
+                // dprintf("\n");
+                // dprintf("COLOR p=%d %02x\n", p, qoi->data[i]);
+                // dprintf("COLOR %d\n", i - _i);
+                // dprintf("COLOR\n");
+                // if (old_r != r || old_g != g || old_b != b || old_a != a) {
+                //   int idx = (r ^ g ^ b ^ a) % 64;
+                //   lut[idx] = (rgba){ r, g, b, a };
+                //   old_r = r;
+                //   old_g = g;
+                //   old_b = b;
+                //   old_a = a;
+                //   dprintf("lut index=%d\n", idx);
+                // }
+                dprintf("COLOR p=%d", p);
                 if (ch->color.has_r) {
-                  printf(" r=%d", r);
+                  dprintf(" r=%d", r);
                 }
                 if (ch->color.has_g) {
-                  printf(" g=%d", g);
+                  dprintf(" g=%d", g);
                 }
                 if (ch->color.has_b) {
-                  printf(" b=%d", b);
+                  dprintf(" b=%d", b);
                 }
                 if (ch->color.has_a) {
-                  printf(" a=%d", a);
+                  dprintf(" a=%d", a);
                 }
-                printf("\n");
+                dprintf("\n");
                 npix++;
                 break;
               }
@@ -325,6 +344,6 @@ main(int argc, char* argv[])
         exit(1);
     }
   }
-  //   printf("npix=%d\n", npix);
+  //   dprintf("npix=%d\n", npix);
   return 0;
 }

@@ -263,6 +263,10 @@ const static qoi_magic_t qoi_magic = { .chars = { 'q', 'o', 'i', 'f' } };
 
 // #define DEBUG
 #ifdef DEBUG
+#define dprintf(...)                                                           \
+  do {                                                                         \
+    printf(__VA_ARGS__);                                                       \
+  } while (0)
 #else
 #define dprintf(...)                                                           \
   do {                                                                         \

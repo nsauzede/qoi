@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+// #define DEBUG
 #include "qoidec.h"
 int
 main(int argc, char* argv[])
@@ -27,7 +28,9 @@ main(int argc, char* argv[])
   fread(data, size, 1, in);
   fclose(in);
   int w = 0, h = 0;
-  unsigned char* pixels = qoidec(data, size, &w, &h, 4);
+  unsigned char *pixels_, *pixels = qoidec(data, size, &w, &h, 4);
+  free(data);
+  pixels_ = pixels;
   FILE* out = fopen(outf, "wt");
   fprintf(out, "P3\n");
   fprintf(out, "%d %d\n", w, h);
@@ -42,5 +45,7 @@ main(int argc, char* argv[])
       fprintf(out, "%d %d %d\n", r, g, b);
     }
   }
+  fclose(out);
+  free(pixels_);
   return 0;
 }

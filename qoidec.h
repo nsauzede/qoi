@@ -50,8 +50,9 @@ typedef union
   } run8;
   struct
   {
-    u16 run : 13;
+    u8 run128 : 5;
     u8 tag : 3;
+    u8 run70 : 8;
   } run16;
   struct
   {
@@ -101,6 +102,10 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
 {
   void* ret = 0;
   qoi_t* qoi = (qoi_t*)data;
+  if (channels != 4) {
+    printf("invalide channels=%d\n", channels);
+    return 0;
+  }
   if (0 != memcmp(qoi->magic, "qoif", 4)) {
     printf("Invalid qoif magic\n");
     return 0;
@@ -124,8 +129,10 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
   }
   *out_w = qoi->width;
   *out_h = qoi->height;
+  //   printf("w=%d h=%d\n", *out_w, *out_h);
   unsigned char* pixels = malloc(*out_w * *out_h * channels);
   ret = pixels;
+  //   printf("ret=%p\n", ret);
   for (int i = 0; i < qoi->size;) {
     if (npix >= qoi->width * qoi->height)
       break;
@@ -148,7 +155,6 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
         // dprintf("INDEX %d\n", i);
         // dprintf("INDEX\n");
         i += sizeof(ch->index);
-        npix++;
         r = lut[ch->index.idx].r;
         g = lut[ch->index.idx].g;
         b = lut[ch->index.idx].b;
@@ -162,7 +168,7 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
             i += sizeof(ch->run8);
             // dprintf("RUN8 %d\n", i - _i);
             // dprintf("RUN8\n");
-            npix += ch->run8.run + 1;
+            npix += ch->run8.run + 1 - 1;
             for (int j = 0; j < ch->run8.run + 1 - 1; j++) {
               *pixels++ = r;
               *pixels++ = g;
@@ -170,19 +176,22 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
               *pixels++ = a;
             }
             break;
-          case 0x3:
-            dprintf("RUN16 p=%d %d\n", p, ch->run16.run);
+          case 0x3: {
+            int run = (ch->run16.run128 << 8) + ch->run16.run70 - 1;
+            dprintf("RUN16 p=%d %u\n", p, run + 1);
             i += sizeof(ch->run16);
             // dprintf("RUN16 %d\n", i - _i);
             // dprintf("RUN16\n");
-            npix += ch->run16.run + 33;
-            for (int j = 0; j < ch->run16.run + 33 - 1; j++) {
+            npix += run;
+            // printf("npix=%d\n", npix);
+            for (int j = 0; j < run; j++) {
               *pixels++ = r;
               *pixels++ = g;
               *pixels++ = b;
               *pixels++ = a;
             }
             break;
+          }
           default:
             printf("unhandled tag3 %d\n", ch->tag3);
             return 0;
@@ -191,7 +200,6 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
       case 0x2:
         // dprintf("DIFF8\n");
         i += sizeof(ch->diff8);
-        npix++;
         r = r + ch->diff8.dr - 1;
         g = g + ch->diff8.dg - 1;
         b = b + ch->diff8.db - 1;
@@ -216,7 +224,6 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
           case 0x6:
             // dprintf("DIFF16\n");
             i += sizeof(ch->diff16);
-            npix++;
             r = r + ch->diff16.dr - 15;
             g = g + ch->diff16.dg - 7;
             b = b + ch->diff16.db - 7;
@@ -244,9 +251,8 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
                 int db = ((ch->diff24.db43 << 3) + ch->diff24.db20) - 15;
                 // dprintf("b 43=%d 20=%d\n", ch->diff24.db43, ch->diff24.db20);
                 // dprintf("DIFF24\n");
-                // i += sizeof(ch->diff24);
-                i += 3;
-                npix++;
+                i += sizeof(ch->diff24);
+                // i += 3;
                 r = r + dr;
                 g = g + dg;
                 b = b + db;
@@ -305,6 +311,7 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
                 //   old_a = a;
                 //   dprintf("lut index=%d\n", idx);
                 // }
+#ifdef DEBUG
                 dprintf("COLOR p=%d", p);
                 if (ch->color.has_r) {
                   dprintf(" r=%d", r);
@@ -319,7 +326,7 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
                   dprintf(" a=%d", a);
                 }
                 dprintf("\n");
-                npix++;
+#endif
                 break;
               }
             }
@@ -330,6 +337,7 @@ qoidec(const void* data, int size, int* out_w, int* out_h, int channels)
         printf("unhandled tag2 %d\n", ch->tag2);
         return 0;
     }
+    npix++;
     *pixels++ = r;
     *pixels++ = g;
     *pixels++ = b;

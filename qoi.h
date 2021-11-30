@@ -283,7 +283,6 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
 
   int max_size = w * h * (channels + 1) + sizeof(qoi_header_t) + 4;
   int p = 0;
-  int _p = p;
   unsigned char* bytes = QOI_MALLOC(max_size);
   if (!bytes) {
     return NULL;
@@ -309,7 +308,6 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
   int px_end = px_len - channels;
   int npix = 0;
   for (int px_pos = 0; px_pos < px_len; px_pos += channels) {
-    _p = p;
     if (channels == 4) {
       px = *(qoi_rgba_t*)(pixels + px_pos);
     } else {
@@ -419,7 +417,6 @@ qoi_encode(const void* data, int w, int h, int channels, int* out_len)
           if (va) {
             bytes[p++] = px.rgba.a;
           }
-          //   dprintf("COLOR %d\n", p - _p);_p = p;
           //   dprintf("COLOR\n");
         }
       }

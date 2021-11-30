@@ -1,8 +1,27 @@
+PNG := thumb.png
+QOI := thumb.qoi
+
+# OPT:=-O0
+OPT:=-O2
 
 all: ./qoidec
-	touch qoiconv.c ; make qoiconv && ./qoiconv thumb.png thumb.qoi > ref.log
-	./qoidec thumb.qoi thumb_qoi.ppm > local.log
+	touch qoiconv.c ; make qoiconv && ./qoiconv $(PNG) $(QOI) > ref.log
+	-./qoidec $(QOI) thumb_qoi.ppm > local.log
 	diff -u ref.log local.log
 
+bench: ./qoibench
+	./qoibench 10 images
+	# gdb -q -nx -ex r --args ./qoibench 10 images
+	# valgrind ./qoibench 10 images
+
+./qoibench: qoibench.c qoi.h qoidec.h
+	gcc -o $@ -g $(OPT) $^ -lpng
+
 ./qoidec: qoidec.c qoidec.h
-	gcc -o $@ -g -O0 $^ -Wall -Werror -Wcast-align
+	gcc -o $@ -g $(OPT) $^ -Wall -Werror -Wcast-align -DDEBUG
+
+./qoiconv: qoiconv.c qoi.h
+	gcc -o $@ -g $(OPT) $^ -Wall -Werror -Wcast-align -DDEBUG
+
+mrproper:
+	$(RM) qoibench qoidec qoiconv

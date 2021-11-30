@@ -25,7 +25,10 @@ main(int argc, char* argv[])
   long size = ftell(in);
   void* data = malloc(size);
   rewind(in);
-  fread(data, size, 1, in);
+  if (fread(data, 1, size, in) < size) {
+  	printf("read error\n");
+  	exit(1);
+  }
   fclose(in);
   int w = 0, h = 0;
   unsigned char *pixels_, *pixels = qoidec(data, size, &w, &h, 4);

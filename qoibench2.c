@@ -387,6 +387,7 @@ benchmark_result_t benchmark_image(const char *path, int runs) {
     res.stbi.size = enc_size;
   });
 
+//  printf("hello %dx%d\n", w, h);
   BENCHMARK_FN(runs, res.qoi.encode_time, {
     int enc_size;
     void *enc_p = qoi_encode(
@@ -394,7 +395,52 @@ benchmark_result_t benchmark_image(const char *path, int runs) {
         &(qoi_desc){
             .width = w, .height = h, .channels = 4, .colorspace = QOI_SRGB},
         &enc_size);
+    // printf("enc_p=%p\n", enc_p);
     res.qoi.size = enc_size;
+    int enc2_size_;
+    // asm volatile("int $3\n");
+    void *enc2_p_ = qoienc(
+        pixels,
+        &(qoi_desc){
+            .width = w, .height = h, .channels = 4, .colorspace = QOI_SRGB},
+        &enc2_size_);
+    // printf("enc2_p_=%p\n", enc2_p_);
+    if (!enc2_p_) {
+      printf("qoienc failed\n");
+      exit(1);
+    }
+    qoi_desc desc;
+    void *dec_p = qoi_decode(enc2_p_, enc2_size_, &desc, 4);
+    // printf("dec_p=%p\n", dec_p);
+    if (!dec_p){
+      printf("qoienc failed\n");
+      exit(1);
+    }
+    int enc2_size;
+    // asm volatile("int $3\n");
+    void *enc2_p = qoi_encode(
+        dec_p,
+        &(qoi_desc){
+            .width = w, .height = h, .channels = 4, .colorspace = QOI_SRGB},
+        &enc2_size);
+    // printf("enc2_p=%p\n", enc2_p);
+
+    if (!enc2_p) {
+      printf("qoienc failed\n");
+      exit(1);
+    }
+    if (enc_size != enc2_size) {
+      printf("qoienc and qoi_encode returned different sizes (%d and %d)\n", enc2_size, enc_size);
+      exit(1);
+    }
+    if (memcmp(enc_p, enc2_p, enc_size) != 0) {
+      printf("qoienc and qoi_encode returned different contents\n");
+      exit(1);
+    }
+    // printf("freeing mem..");
+    free(enc2_p);
+    free(dec_p);
+    free(enc2_p_);
     free(enc_p);
   });
 

@@ -77,12 +77,15 @@ typedef union {
     u8 db20 : 3;
   } diff24;
 
-  struct {
+  union {
+    u8 data[1];
+    struct{
     u8 has_a : 1;
     u8 has_b : 1;
     u8 has_g : 1;
     u8 has_r : 1;
     u8 tag : 4;
+    };
   } color;
 } chunk_t;
 
@@ -105,6 +108,51 @@ typedef struct {
 } qoi_desc;
 #endif
 
+void *qoienc(const void *data, const qoi_desc *desc, int *out_len) {
+  if (!data || !desc || !out_len){
+    return 0;
+  }
+  if (!desc->width || !desc->height || desc->channels != 4 || desc->colorspace != 0){
+    return 0;
+  }
+  // arbitrary -- could be raised a bit if relevant
+  if (desc->width > 3000 || desc->height > 21000){
+    return 0;
+  }
+  int psize = desc->width * desc->height;
+  int msize = sizeof(qoi_t) + psize * (desc->channels + 1); // hack to output all QOI_COLOR (channels==4 + 1 bytes)
+  qoi_t *qoi = (qoi_t *)malloc(msize);
+  qoi->magic[0] = 'q';
+  qoi->magic[1] = 'o';
+  qoi->magic[2] = 'i';
+  qoi->magic[3] = 'f';
+  qoi->width = htonl(desc->width);
+  qoi->height = htonl(desc->height);
+  qoi->channels = desc->channels;
+  qoi->colorspace = desc->colorspace;
+  int size = 0;
+  u8 *pixels = (u8 *)data;
+  for (int p = 0; p < psize; p++){
+    chunk_t ch = {0};
+    ch.color.tag=0xf;
+    ch.color.has_r = 1;
+    ch.color.has_g = 1;
+    ch.color.has_b = 1;
+    if (desc->channels == 4){
+      ch.color.has_a = 1;
+    }
+    qoi->data[size++] = ch.color.data[0];
+    qoi->data[size++] = *pixels++;
+    qoi->data[size++] = *pixels++;
+    qoi->data[size++] = *pixels++;
+    if (desc->channels == 4){
+      qoi->data[size++] = *pixels++;
+    }
+  }
+  *out_len = msize;
+  return qoi;
+}
+
 void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
   void *ret = 0;
   qoi_t *qoi = (qoi_t *)data;
@@ -114,6 +162,10 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
   }
   if (channels != qoi->channels) {
     printf("Invalid channels=%d (%d)\n", channels, qoi->channels);
+    return 0;
+  }
+  if (qoi->colorspace != 0) {
+    printf("Invalid colorspace=%d\n", qoi->colorspace);
     return 0;
   }
   int w = ntohl(qoi->width);
@@ -138,6 +190,7 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
     lut[i] = (rgba){128, 128, 128};
   }
   desc->channels = channels;
+  desc->channels = qoi->colorspace;
   desc->width = w;
   desc->height = h;
   //   printf("w=%d h=%d\n", *out_w, *out_h);

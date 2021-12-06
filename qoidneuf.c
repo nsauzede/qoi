@@ -4,6 +4,19 @@
 
 #define DEBUG2
 #include "qoidneuf.h"
+
+// #define DEBUG3
+#ifdef DEBUG3
+#define dprintf3(...)                                                          \
+  do {                                                                         \
+    fprintf(stderr, __VA_ARGS__);                                              \
+  } while (0)
+#else
+#define dprintf3(...)                                                          \
+  do {                                                                         \
+  } while (0)
+#endif
+
 int main(int argc, char *argv[]) {
   char *inf = 0;
   char *outf = 0;
@@ -68,7 +81,7 @@ int main(int argc, char *argv[]) {
       printf("IPAM error %d\n", __LINE__);
       exit(1);
     }
-    fprintf(stderr, "PAM P7\n");
+    dprintf3("PAM P7\n");
     ptr = endl;
     endl = strchr(ptr, '\n');
     if (!endl) {
@@ -81,7 +94,7 @@ int main(int argc, char *argv[]) {
       printf("IPAM error %d\n", __LINE__);
       exit(1);
     }
-    fprintf(stderr, "PAM width %d\n", w);
+    dprintf3("PAM width %d\n", w);
     ptr = endl;
     endl = strchr(ptr, '\n');
     if (!endl) {
@@ -93,7 +106,7 @@ int main(int argc, char *argv[]) {
       printf("IPAM error %d\n", __LINE__);
       exit(1);
     }
-    fprintf(stderr, "PAM height %d\n", h);
+    dprintf3("PAM height %d\n", h);
     ptr = endl;
     endl = strchr(ptr, '\n');
     if (!endl) {
@@ -105,7 +118,7 @@ int main(int argc, char *argv[]) {
       printf("IPAM error %d\n", __LINE__);
       exit(1);
     }
-    fprintf(stderr, "PAM depth %d\n", d);
+    dprintf3("PAM depth %d\n", d);
     ptr = endl;
     endl = strchr(ptr, '\n');
     if (!endl) {
@@ -117,7 +130,7 @@ int main(int argc, char *argv[]) {
       printf("IPAM error %d\n", __LINE__);
       exit(1);
     }
-    fprintf(stderr, "PAM maxval %d\n", m);
+    dprintf3("PAM maxval %d\n", m);
     ptr = endl;
     endl = strchr(ptr, ' ');
     if (!endl) {
@@ -129,7 +142,7 @@ int main(int argc, char *argv[]) {
       printf("IPAM error %d\n", __LINE__);
       exit(1);
     }
-    fprintf(stderr, "PAM TUPLTYPE\n");
+    dprintf3("PAM TUPLTYPE\n");
     ptr = endl;
     endl = strchr(ptr, '\n');
     if (!endl) {
@@ -151,7 +164,7 @@ int main(int argc, char *argv[]) {
       printf("IPAM error %d\n", __LINE__);
       exit(1);
     }
-    fprintf(stderr, "PAM RGB\n");
+    dprintf3("PAM RGB\n");
     ptr = endl;
     endl = strchr(ptr, '\n');
     if (!endl) {
@@ -163,7 +176,7 @@ int main(int argc, char *argv[]) {
       printf("IPAM error %d\n", __LINE__);
       exit(1);
     }
-    fprintf(stderr, "PAM ENDHDR\n");
+    dprintf3("PAM ENDHDR\n");
     ptr = endl;
 
     if (m != 255) {
@@ -172,7 +185,7 @@ int main(int argc, char *argv[]) {
     }
     long rem = size - ((intptr_t)ptr - (intptr_t)data);
     long psize = w * h * d;
-    fprintf(stderr, "psize=%ld rem=%ld\n", psize, rem);
+    dprintf3("psize=%ld rem=%ld\n", psize, rem);
     if (rem != psize) {
       printf("IPAM error %d\n", __LINE__);
       exit(1);

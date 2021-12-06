@@ -326,7 +326,7 @@ typedef struct {
 
 // #define DEBUG
 #define QOIDEC_IMPL
-#include "qoidec.h"
+#include "qoidneuf.h"
 
 benchmark_result_t benchmark_image(const char *path, int runs) {
   int encoded_png_size;

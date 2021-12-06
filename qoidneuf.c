@@ -3,7 +3,7 @@
 #include <string.h>
 
 #define DEBUG2
-#include "qoidec.h"
+#include "qoidneuf.h"
 int main(int argc, char *argv[]) {
   char *inf = 0;
   char *outf = 0;

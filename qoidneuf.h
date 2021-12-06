@@ -302,7 +302,8 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
   }
   if (channels != qoi->channels) {
     if (!channels) {
-      channels = desc->channels;
+      channels = qoi->channels;
+      // fprintf(stderr, "spoofing channels to %d\n", channels);
     } else {
       printf("Invalid channels=%d (%d)\n", channels, qoi->channels);
       return 0;

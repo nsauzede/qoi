@@ -14,8 +14,8 @@ int main(int argc, char *argv[]) {
       outf = argv[arg++];
     }
   }
-  enum { ibad, iqoi } itype = ibad;
-  enum { obad, oppm, oqoi } otype = obad;
+  enum { ibad, iqoi, ipam } itype = ibad;
+  enum { obad, oqoi, opam, oppm } otype = obad;
   int usage = 0;
   if (!inf || !outf || strlen(inf) < 5 || strlen(outf) < 5) {
     usage = 1;
@@ -23,8 +23,12 @@ int main(int argc, char *argv[]) {
     // printf("inf=%s outf=%s\n", inf, outf);
     if (!strcmp(inf + strlen(inf) - 4, ".qoi")) {
       itype = iqoi;
+    } else if (!strcmp(inf + strlen(inf) - 4, ".pam")) {
+      itype = ipam;
     }
-    if (!strcmp(outf + strlen(outf) - 4, ".ppm")) {
+    if (!strcmp(outf + strlen(outf) - 4, ".pam")) {
+      otype = opam;
+    } else if (!strcmp(outf + strlen(outf) - 4, ".ppm")) {
       otype = oppm;
     } else if (!strcmp(outf + strlen(outf) - 4, ".qoi")) {
       otype = oqoi;
@@ -51,14 +55,160 @@ int main(int argc, char *argv[]) {
   unsigned char *pixels = 0;
   qoi_desc desc = {.height = 0, .width = 0, .channels = 4, .colorspace = 0};
   if (itype == iqoi) {
-    pixels = qoidec(data, size, &desc, 3);
+    pixels = qoidec(data, size, &desc, 0);
+  } else if (itype == ipam) {
+    char *ptr = data;
+    char *endl = strchr(ptr, '\n');
+    if (!endl) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    *endl++ = 0;
+    if (strcmp(ptr, "P7")) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    fprintf(stderr, "PAM P7\n");
+    ptr = endl;
+    endl = strchr(ptr, '\n');
+    if (!endl) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    *endl++ = 0;
+    int w, h, d, m;
+    if (1 != sscanf(ptr, "WIDTH %d", &w)) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    fprintf(stderr, "PAM width %d\n", w);
+    ptr = endl;
+    endl = strchr(ptr, '\n');
+    if (!endl) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    *endl++ = 0;
+    if (1 != sscanf(ptr, "HEIGHT %d", &h)) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    fprintf(stderr, "PAM height %d\n", h);
+    ptr = endl;
+    endl = strchr(ptr, '\n');
+    if (!endl) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    *endl++ = 0;
+    if (1 != sscanf(ptr, "DEPTH %d", &d)) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    fprintf(stderr, "PAM depth %d\n", d);
+    ptr = endl;
+    endl = strchr(ptr, '\n');
+    if (!endl) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    *endl++ = 0;
+    if (1 != sscanf(ptr, "MAXVAL %d", &m)) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    fprintf(stderr, "PAM maxval %d\n", m);
+    ptr = endl;
+    endl = strchr(ptr, ' ');
+    if (!endl) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    *endl++ = 0;
+    if (strcmp(ptr, "TUPLTYPE")) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    fprintf(stderr, "PAM TUPLTYPE\n");
+    ptr = endl;
+    endl = strchr(ptr, '\n');
+    if (!endl) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    *endl++ = 0;
+    if (0 == strcmp(ptr, "RGB")) {
+      if (d != 3) {
+        printf("IPAM error %d\n", __LINE__);
+        exit(1);
+      }
+    } else if (0 == strcmp(ptr, "RGB_ALPHA")) {
+      if (d != 4) {
+        printf("IPAM error %d\n", __LINE__);
+        exit(1);
+      }
+    } else {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    fprintf(stderr, "PAM RGB\n");
+    ptr = endl;
+    endl = strchr(ptr, '\n');
+    if (!endl) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    *endl++ = 0;
+    if (strcmp(ptr, "ENDHDR")) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    fprintf(stderr, "PAM ENDHDR\n");
+    ptr = endl;
+
+    if (m != 255) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    long rem = size - ((intptr_t)ptr - (intptr_t)data);
+    long psize = w * h * d;
+    fprintf(stderr, "psize=%ld rem=%ld\n", psize, rem);
+    if (rem != psize) {
+      printf("IPAM error %d\n", __LINE__);
+      exit(1);
+    }
+    desc.width = w;
+    desc.height = h;
+    desc.channels = d;
+    pixels = malloc(psize);
+    memcpy(pixels, ptr, psize);
   }
   free(data);
   if (!pixels) {
     printf("decode error\n");
     exit(1);
   }
-  if (otype == oppm) {
+  if (desc.channels != 3 && desc.channels != 4) {
+    printf("channels error %d\n", desc.channels);
+    exit(1);
+  }
+  if (otype == opam) {
+    unsigned char *pixels_ = pixels;
+    FILE *out = fopen(outf, "wt");
+    fprintf(out, "P7\n");
+    fprintf(out, "WIDTH %d\nHEIGHT %d\n", desc.width, desc.height);
+    fprintf(out, "DEPTH %d\n", desc.channels);
+    fprintf(out, "MAXVAL 255\n");
+    fprintf(out, "TUPLTYPE %s\n", desc.channels == 3 ? "RGB" : "RGB_ALPHA");
+    fprintf(out, "ENDHDR\n");
+    for (int j = 0; j < desc.height; j++) {
+      for (int i = 0; i < desc.width; i++) {
+        fwrite(pixels_, desc.channels, 1, out);
+        pixels_ += desc.channels;
+      }
+    }
+    fclose(out);
+  } else if (otype == oppm) {
     unsigned char *pixels_ = pixels;
     FILE *out = fopen(outf, "wt");
     fprintf(out, "P3\n");

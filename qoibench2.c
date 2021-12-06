@@ -416,6 +416,10 @@ benchmark_result_t benchmark_image(const char *path, int runs) {
       printf("qoienc failed\n");
       exit(1);
     }
+    if (0 != memcmp(pixels, dec_p, w * h * 4)) {
+      printf("decoded qoienc contents different from pixels source (path=%s)\n", path);
+      exit(1);
+    }
     int enc2_size;
     // asm volatile("int $3\n");
     void *enc2_p = qoi_encode(

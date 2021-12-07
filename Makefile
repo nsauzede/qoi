@@ -9,15 +9,15 @@ all: ./qoiconv ./qoidneuf
 
 test: ./qoiconv ./qoidneuf
 	./qoiconv $(PNG) $(QOI) > qoiconv.log
-	./qoidneuf $(QOI) thumb_d.pam > qoidec.log
+	./qoidneuf $(QOI) thumb-d.pam > qoidec.log
 	convert $(PNG) thumb.pam
 	@#diff -u qoiconv.log qoidec.log
-	./qoidneuf thumb.pam thumb_e.qoi > qoienc.log
-	./qoidneuf thumb_e.qoi thumb_ed.pam > qoienc_dec.log
+	./qoidneuf thumb.pam thumb-e.qoi > qoienc.log
+	./qoidneuf thumb-e.qoi thumb-ed.pam > qoienc_dec.log
 	@# diff -u qoidec.log qoienc_dec.log |less
-	diff -q thumb_d.pam thumb.pam
-	diff -q $(QOI) thumb_e.qoi
-	diff -q thumb_ed.pam thumb.pam
+	diff -q thumb-d.pam thumb.pam
+	diff -q $(QOI) thumb-e.qoi
+	diff -q thumb-ed.pam thumb.pam
 
 bench: ./qoibench
 	./qoibench 5 images/screenshots

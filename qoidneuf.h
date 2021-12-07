@@ -184,9 +184,9 @@ void *qoienc(const void *data, const qoi_desc *desc, int *out_len) {
         qoi->data[size++] = ch.data[0];
       } else {
         ch.run16.tag = 0x3;
-        ch.run16.run70 = (run - 1) & 0xff;
-        ch.run16.run128 = (run - 1) >> 8;
-        dprintf2("RUN16 p=%d %02x %d\n", 14 + size, ch.data[0], run - 1);
+        ch.run16.run70 = (run - 33) & 0xff;
+        ch.run16.run128 = (run - 33) >> 8;
+        dprintf2("RUN16 p=%d %02x %d\n", 14 + size, ch.data[0], run - 33);
         qoi->data[size++] = ch.data[0];
         qoi->data[size++] = ch.data[1];
       }
@@ -205,9 +205,9 @@ void *qoienc(const void *data, const qoi_desc *desc, int *out_len) {
       int dr = pix.rgba->r - old_p->r;
       int dg = pix.rgba->g - old_p->g;
       int db = pix.rgba->b - old_p->b;
-      int da = pix.rgba->a - old_p->a;
-      if (channels == 3) {
-        da = 0;
+      int da = 0;
+      if (channels == 4) {
+        da = pix.rgba->a - old_p->a;
       }
       if (dr >= -2 && dr <= 1 && dg >= -2 && dg <= 1 && db >= -2 && db <= 1) {
         ch.diff8.tag = 0x2;
@@ -331,7 +331,7 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
   int r, g, b = g = r = 0, a = 255;
   //   int old_r = 0, old_g = 0, old_b = 0, old_a = 255;
   rgba lut[64];
-  memset(lut, -1, sizeof(lut));
+  memset(lut, 0, sizeof(lut));
   desc->channels = channels;
   desc->colorspace = qoi->colorspace;
   desc->width = w;

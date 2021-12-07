@@ -206,7 +206,6 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   if (otype == opam) {
-    unsigned char *pixels_ = pixels;
     FILE *out = fopen(outf, "wt");
     fprintf(out, "P7\n");
     fprintf(out, "WIDTH %d\nHEIGHT %d\n", desc.width, desc.height);
@@ -214,12 +213,7 @@ int main(int argc, char *argv[]) {
     fprintf(out, "MAXVAL 255\n");
     fprintf(out, "TUPLTYPE %s\n", desc.channels == 3 ? "RGB" : "RGB_ALPHA");
     fprintf(out, "ENDHDR\n");
-    for (int j = 0; j < desc.height; j++) {
-      for (int i = 0; i < desc.width; i++) {
-        fwrite(pixels_, desc.channels, 1, out);
-        pixels_ += desc.channels;
-      }
-    }
+    fwrite(pixels, desc.width * desc.height * desc.channels, 1, out);
     fclose(out);
   } else if (otype == oppm) {
     unsigned char *pixels_ = pixels;

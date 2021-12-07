@@ -387,7 +387,7 @@ benchmark_result_t benchmark_image(const char *path, int runs) {
     res.stbi.size = enc_size;
   });
 
-//  printf("hello %dx%d\n", w, h);
+  //  printf("hello %dx%d\n", w, h);
   BENCHMARK_FN(runs, res.qoi.encode_time, {
     int enc_size;
     void *enc_p = qoi_encode(
@@ -412,12 +412,13 @@ benchmark_result_t benchmark_image(const char *path, int runs) {
     qoi_desc desc;
     void *dec_p = qoi_decode(enc2_p_, enc2_size_, &desc, 4);
     // printf("dec_p=%p\n", dec_p);
-    if (!dec_p){
+    if (!dec_p) {
       printf("qoienc failed\n");
       exit(1);
     }
     if (0 != memcmp(pixels, dec_p, w * h * 4)) {
-      printf("decoded qoienc contents different from pixels source (path=%s)\n", path);
+      printf("decoded qoienc contents different from pixels source (path %s)\n",
+             path);
       exit(1);
     }
     int enc2_size;
@@ -434,7 +435,8 @@ benchmark_result_t benchmark_image(const char *path, int runs) {
       exit(1);
     }
     if (enc_size != enc2_size) {
-      printf("qoienc and qoi_encode returned different sizes (%d and %d)\n", enc2_size, enc_size);
+      printf("qoienc and qoi_encode returned different sizes (%d and %d)\n",
+             enc2_size, enc_size);
       exit(1);
     }
     if (memcmp(enc_p, enc2_p, enc_size) != 0) {

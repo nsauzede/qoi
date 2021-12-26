@@ -155,16 +155,17 @@ int main(int argc, char *argv[]) {
         printf("IPAM error %d\n", __LINE__);
         exit(1);
       }
+      dprintf3("PAM RGB\n");
     } else if (0 == strcmp(ptr, "RGB_ALPHA")) {
       if (d != 4) {
         printf("IPAM error %d\n", __LINE__);
         exit(1);
       }
+      dprintf3("PAM RGB_ALPHA\n");
     } else {
       printf("IPAM error %d\n", __LINE__);
       exit(1);
     }
-    dprintf3("PAM RGB\n");
     ptr = endl;
     endl = strchr(ptr, '\n');
     if (!endl) {

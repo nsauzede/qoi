@@ -177,6 +177,7 @@ void *qoienc(const void *data, const qoi_desc *desc, int *out_len) {
       continue;
     }
     if (run) {
+      // printf("i=%d ch=%d %02x %02x %02x %02x\n", i, channels, pix.rgba->r, pix.rgba->g, pix.rgba->b, pix.rgba->a);
       if (run <= 32) {
         ch.run8.tag = 0x2;
         ch.run8.run = run - 1;
@@ -342,12 +343,15 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
   //   printf("ret=%p\n", ret);
   for (int i = 0; i < size;) {
     // printf("i=%3d ", i);
-    if (npix >= w * h)
+    if (npix >= w * h) {
+      printf("npix=%d watchdog (i=%d, size=%d, w=%d h=%d)\n", npix, i, size, w, h);
       break;
+    }
 #ifdef DEBUG
     int p = 14 + i;
 #endif
     chunk_t *ch = (chunk_t *)&qoi->data[i];
+    // printf("i=%d ch=%p %d %d %d %d\n", i, ch, r, g, b, a);
     // if (old_r != r || old_g != g || old_b != b || old_a != a) {
     int idx = (r ^ g ^ b ^ a) % 64;
     lut[idx] = (rgba){r, g, b, a};
@@ -357,12 +361,15 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
     // old_a = a;
     // dprintf("lut index=%d %d %d %d %d\n", idx, r, g, b, a);
     // }
+    // printf("i=%d ch=%p (after; idx=%d)\n", i, ch, idx);
     switch (ch->tag2) {
     case 0x0:
       dprintf("INDEX p=%d %02x %d\n", p, ch->data[0], ch->index.idx);
+      // printf("INDEX %02x %d\n", ch->data[0], ch->index.idx);
       // dprintf("INDEX %d\n", i);
       // dprintf("INDEX\n");
       i += sizeof(ch->index);
+      npix++;
       r = lut[ch->index.idx].r;
       g = lut[ch->index.idx].g;
       b = lut[ch->index.idx].b;
@@ -410,6 +417,7 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
     case 0x2:
       // dprintf("DIFF8\n");
       i += sizeof(ch->diff8);
+      npix++;
       r = r + ch->diff8.dr - 2;
       g = g + ch->diff8.dg - 2;
       b = b + ch->diff8.db - 2;
@@ -422,6 +430,7 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
       case 0x6:
         // dprintf("DIFF16\n");
         i += sizeof(ch->diff16);
+        npix++;
         r = r + ch->diff16.dr - 16;
         g = g + ch->diff16.dg - 8;
         b = b + ch->diff16.db - 8;
@@ -438,6 +447,7 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
           // dprintf("b 43=%d 20=%d\n", ch->diff24.db43, ch->diff24.db20);
           // dprintf("DIFF24\n");
           i += sizeof(ch->diff24);
+          npix++;
           // i += 3;
           r = r + dr;
           g = g + dg;
@@ -449,6 +459,7 @@ void *qoidec(const void *data, int size, qoi_desc *desc, int channels) {
         default: {
           // dprintf("COLOR p=%d\n", p);
           // dprintf("COLOR p=%d", p);
+          npix++;
           i++;
           if (ch->color.has_r) {
             //   dprintf(" r=%d", qoi->data[i]);

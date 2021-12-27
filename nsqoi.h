@@ -59,7 +59,24 @@ void *nsqoi_read(const char *filename, qoi_desc *desc, int channels) {
 
 #endif
 
+#if 0
 #include <arpa/inet.h>
+#else
+long ntohl(long n_) {
+	union {
+		long l;
+		struct {
+			unsigned char a, b, c, d;
+		};
+	} h, n;
+	n.l = n_;
+	h.a = n.d;
+	h.b = n.c;
+	h.c = n.b;
+	h.d = n.a;
+	return h.l;
+}
+#endif
 
 typedef uint8_t u8;
 typedef uint16_t u16;
